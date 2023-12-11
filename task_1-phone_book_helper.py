@@ -1,61 +1,15 @@
 import re
+from error_utils import input_error, validation_error, error_messages, validation_messages, ValidationError
 
 phone_pattern = re.compile(r'^\+?\d{1,4}?[-. ]?\(?\d{1,}\)?[-. ]?\d{1,}[-. ]?\d{1,}$')
 
 def is_valid_phone_number(phone_number):
     return bool(phone_pattern.match(phone_number))
 
-# Custom exceptions
-class NoCommandError(Exception):
-    pass
-
-class NoNameError(Exception):
-    pass
-
-class NoNameAndPhoneError(Exception):
-    pass
-
-class NoContactsError(Exception):
-    pass
-
-class NoContactError(Exception):
-    pass
-
-class InvalidPhoneError(Exception):
-    pass
-
-# decorator for error handling
-def input_error(func):
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except NoCommandError:
-            return "Enter some command please."
-        except NoNameError:
-            return "Give me name please."
-        except NoNameAndPhoneError:
-            return "Give me name and phone please."
-        except NoContactError:
-            return "There is no such contact in your phone book."
-        except NoContactsError:
-            return "There are no contacts in your phone book yet."
-
-    return inner
-
-# decorator for validation handling
-def validation_error(func):
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except InvalidPhoneError:
-            return "The phone entered is not valid."
-
-    return inner
-
 @input_error
 def parse_input(user_input):
     if not len(user_input):
-        raise NoCommandError
+        raise ValueError(error_messages["no_command"])
     cmd, *args = user_input.split()
     cmd = cmd.strip().lower()
     return cmd, *args
@@ -64,10 +18,10 @@ def parse_input(user_input):
 @validation_error
 def add_contact(args, contacts):
     if len(args) < 2:
-        raise NoNameAndPhoneError
+        raise ValueError(error_messages["no_name_and_phone"])
     name, phone = args
     if not is_valid_phone_number(phone):
-        raise InvalidPhoneError
+        raise ValidationError(validation_messages["invalid_phone"])
     contacts[name] = phone
     return "Contact added."
 
@@ -75,28 +29,28 @@ def add_contact(args, contacts):
 @validation_error
 def change_contact(args, contacts):
     if len(args) < 2:
-        raise NoNameAndPhoneError
+        raise ValueError(error_messages["no_name_and_phone"])
     name, phone = args
     if not is_valid_phone_number(phone):
-        raise InvalidPhoneError
+        raise ValidationError(validation_messages["invalid_phone"])
     if not name in contacts:
-        raise NoContactError
+        raise IndexError(error_messages["no_contact"])
     contacts[name] = phone
     return "Contact updated."
 
 @input_error
 def show_phone_by_user(args, contacts):
     if len(args) == 0:
-        raise NoNameError
+        raise ValueError(error_messages["no_name"])
     name = args[0]
     if not name in contacts:
-        raise NoContactError
+        raise IndexError(error_messages["no_contact"])
     return contacts[name]
 
 @input_error
 def show_all(contacts):
     if not len(contacts):
-        raise NoContactsError
+        raise IndexError(error_messages["no_contacts"])
     contacts_to_display = ''
     for name, phone in contacts.items():
         contacts_to_display += '{:<10}: {:}\n'.format(name, phone)
